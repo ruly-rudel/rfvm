@@ -5,13 +5,29 @@
 
 typedef enum {
 	OP_HALT = 0,
+
+	OP_BB,
+	OP_BBZ,
+
 	OP_PUSHB,
 	OP_PUSHD,
 	OP_PUSHQ,
+
 	OP_ADD,
 	OP_SUB,
 	OP_MUL,
 	OP_DIV,
+
+	OP_EQ,
+	OP_GNE,
+
+	OP_AND,
+	OP_OR,
+
+	OP_DUP,
+
+	OP_NOT,
+
 	OP_DOT,
 } prim_t;
 

@@ -10,6 +10,10 @@
 #define PSP_OF_CHK	if(psp >  pst) { ret = E_STACKOFLOW; goto LB_HALT; }
 #define NEXT_OP		goto *jtbl[*++ip]
 
+#define DEF_BOP(OP) \
+	psp -= 1; *(psp - 1) = *(psp - 1) OP *psp; \
+	PSP_UF_CHK_M1; NEXT_OP;
+
 /////////////////////////////////////////////////////////////////////
 // public: vm
 
@@ -27,35 +31,65 @@ int exec_rfvm(uint8_t* code)
 	// jamp table
 	static const void *jtbl[] = {
 		&&LB_HALT,
+		&&LB_BB,
+		&&LB_BBZ,
 		&&LB_PUSHB,
 		&&LB_NOTIMPL,		// OP_PUSHD
 		&&LB_NOTIMPL,		// OP_PUSHQ
 		&&LB_ADD,
 		&&LB_SUB,
 		&&LB_MUL,
-		&&LB_NOTIMPL,		// OP_DIV
+		&&LB_DIV,
+		&&LB_EQ,
+		&&LB_GNE,
+		&&LB_AND,
+		&&LB_OR,
+		&&LB_DUP,
+		&&LB_NOT,
 		&&LB_DOT,
 	};
 
 	// return code
 	int ret = E_OK;
 
+	// initialize done. now execute vm.
+	goto *jtbl[*ip];
+
 	//////////////////////////////////////////////////
 	// opcodes
+LB_BB:
+	goto *jtbl[*(ip + (int8_t)*(ip + 1))];
+
+LB_BBZ:
+	ip++;
+	if(*psp-- == 0)
+	{
+		goto *jtbl[*(ip + (int8_t)*ip)];
+	}
+	else
+	{
+		NEXT_OP;
+	}
+
 LB_PUSHB:
 	*psp++ = (int8_t)*++ip;
 	PSP_OF_CHK; NEXT_OP;
 
-LB_ADD:
-	psp -= 1; *(psp - 1) += *psp;
-	PSP_UF_CHK_M1; NEXT_OP;
+LB_ADD: DEF_BOP(+)
+LB_SUB:	DEF_BOP(-)
+LB_MUL:	DEF_BOP(*)
+LB_DIV:	DEF_BOP(/)
+LB_EQ:	DEF_BOP(==)
+LB_GNE:	DEF_BOP(>)
+LB_AND:	DEF_BOP(&&)
+LB_OR:	DEF_BOP(||)
 
-LB_SUB:
-	psp -= 1; *(psp - 1) -= *psp;
-	PSP_UF_CHK_M1; NEXT_OP;
+LB_DUP:
+	*psp = *(psp - 1);
+	PSP_UF_CHK_M1; psp++; PSP_OF_CHK; NEXT_OP;
 
-LB_MUL:
-	psp -= 1; *(psp - 1) *= *psp;
+LB_NOT:
+	*psp = !*psp;
 	PSP_UF_CHK_M1; NEXT_OP;
 
 LB_DOT:
