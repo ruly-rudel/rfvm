@@ -5,6 +5,9 @@
 #include "rfvm.h"
 
 
+#define PSP_UF_CHK_M1	if(psp <= psb) { ret = E_FEWSTACK;   goto LB_HALT; }
+#define PSP_UF_CHK	if(psp <  psb) { ret = E_FEWSTACK;   goto LB_HALT; }
+#define PSP_OF_CHK	if(psp >  pst) { ret = E_STACKOFLOW; goto LB_HALT; }
 #define NEXT_OP		goto *jtbl[*++ip]
 
 /////////////////////////////////////////////////////////////////////
@@ -17,7 +20,9 @@ int exec_rfvm(uint8_t* code)
 
 	// parameter stack
 	int64_t* pstack = malloc(sizeof(int64_t) * 1024);
-	int64_t* psp    = pstack;
+	int64_t* psb    = pstack + 3;		// safe until three arguments exaust
+	int64_t* pst    = pstack + 1024 - 3;	// safe until three arguments overflow
+	int64_t* psp    = psb;
 
 	// jamp table
 	static const void *jtbl[] = {
@@ -32,37 +37,36 @@ int exec_rfvm(uint8_t* code)
 		&&LB_DOT,
 	};
 
+	// return code
+	int ret = E_OK;
+
 	//////////////////////////////////////////////////
 	// opcodes
 LB_PUSHB:
 	*psp++ = (int8_t)*++ip;
-	NEXT_OP;
+	PSP_OF_CHK; NEXT_OP;
 
 LB_ADD:
-	psp -= 1;
-	*(psp - 1) += *psp;
-	NEXT_OP;
+	psp -= 1; *(psp - 1) += *psp;
+	PSP_UF_CHK_M1; NEXT_OP;
 
 LB_SUB:
-	psp -= 1;
-	*(psp - 1) -= *psp;
-	NEXT_OP;
+	psp -= 1; *(psp - 1) -= *psp;
+	PSP_UF_CHK_M1; NEXT_OP;
 
 LB_MUL:
-	psp -= 1;
-	*(psp - 1) *= *psp;
-	NEXT_OP;
+	psp -= 1; *(psp - 1) *= *psp;
+	PSP_UF_CHK_M1; NEXT_OP;
 
 LB_DOT:
-	printf("%ld\n", *--psp);
-	NEXT_OP;
+	printf("%ld ", *--psp);
+	PSP_UF_CHK; NEXT_OP;
 
 LB_NOTIMPL:
-	fprintf(stderr, "opcode not implemented yet.\n");
-	abort();
+	ret = E_NOTIMPL;
+	// fall thru
 
 LB_HALT:
-	return 0;
-
+	return ret;
 }
 

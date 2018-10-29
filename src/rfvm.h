@@ -15,6 +15,13 @@ typedef enum {
 	OP_DOT,
 } prim_t;
 
+typedef enum {
+	E_OK = 0,
+	E_FEWSTACK,
+	E_STACKOFLOW,
+	E_NOTIMPL,
+} err_t;
+
 
 int exec_rfvm(uint8_t* code);
 
