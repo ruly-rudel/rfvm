@@ -9,6 +9,9 @@ typedef enum {
 	OP_PUSHD,
 	OP_PUSHQ,
 	OP_ADD,
+	OP_SUB,
+	OP_MUL,
+	OP_DIV,
 	OP_DOT,
 } prim_t;
 
