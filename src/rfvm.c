@@ -5,6 +5,8 @@
 #include "rfvm.h"
 
 
+#define NEXT_OP		goto *jtbl[code[++pc]]
+
 /////////////////////////////////////////////////////////////////////
 // public: vm
 
@@ -15,38 +17,34 @@ int exec_rfvm(uint8_t* code)
 	int64_t* pstack = malloc(sizeof(int64_t) * 1024);
 	int psp = 0;
 
-	for(;;)
-	{
-		uint8_t op = code[pc];
-		switch(op)
-		{
-			case OP_HALT:
-				return 0;
+	static const void *jtbl[] = {
+		&&LB_HALT,
+		&&LB_PUSHB,
+		&&LB_NOTIMPL,
+		&&LB_NOTIMPL,
+		&&LB_ADD,
+		&&LB_DOT,
+	};
 
-			case OP_PUSHB:
-				pstack[psp] = (int8_t)code[pc + 1];
-				psp += 1;
-				pc  += 2;
-				break;
+LB_PUSHB:
+	pstack[psp++] = (int8_t)code[++pc];
+	NEXT_OP;
 
-			case OP_ADD:
-				pstack[psp - 2] += pstack[psp - 1];
-				psp -= 1;
-				pc  += 1;
-				break;
+LB_ADD:
+	pstack[psp - 2] += pstack[psp - 1];
+	psp -= 1;
+	NEXT_OP;
 
-			case OP_DOT:
-				printf("%ld\n", pstack[psp - 1]);
-				psp -= 1;
-				pc  += 1;
-				break;
+LB_DOT:
+	printf("%ld\n", pstack[--psp]);
+	NEXT_OP;
 
-			default:
-				fprintf(stderr, "unknown opcode.\n");
-				abort();
-		}
-	}
+LB_NOTIMPL:
+	fprintf(stderr, "opcode not implemented yet.\n");
+	abort();
 
-	return -1;	// not reached
+LB_HALT:
+	return 0;
+
 }
 
