@@ -6,6 +6,9 @@
 typedef enum {
 	OP_HALT = 0,
 
+	OP_CALL,
+	OP_RET,
+
 	OP_BB,
 	OP_BBZ,
 
@@ -20,11 +23,16 @@ typedef enum {
 
 	OP_EQ,
 	OP_GNE,
+	OP_GE,
+	OP_LNE,
+	OP_LE,
 
 	OP_AND,
 	OP_OR,
 
 	OP_DUP,
+	OP_DROP,
+	OP_SWAP,
 
 	OP_NOT,
 

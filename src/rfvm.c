@@ -4,10 +4,16 @@
 #include <stdlib.h>
 #include "rfvm.h"
 
-
+#ifdef NBCHECK
+#define PSP_UF_CHK_M1
+#define PSP_UF_CHK
+#define PSP_OF_CHK
+#else	// NBCHECK
 #define PSP_UF_CHK_M1	if(psp <= psb) { ret = E_FEWSTACK;   goto LB_HALT; }
 #define PSP_UF_CHK	if(psp <  psb) { ret = E_FEWSTACK;   goto LB_HALT; }
 #define PSP_OF_CHK	if(psp >  pst) { ret = E_STACKOFLOW; goto LB_HALT; }
+#endif	// NBCHECK
+
 #define NEXT_OP		goto *jtbl[*++ip]
 
 #define DEF_BOP(OP) \
@@ -23,14 +29,25 @@ int exec_rfvm(uint8_t* code)
 	uint8_t* ip     = code;
 
 	// parameter stack
-	int64_t* pstack = malloc(sizeof(int64_t) * 1024);
-	int64_t* psb    = pstack + 3;		// safe until three arguments exaust
-	int64_t* pst    = pstack + 1024 - 3;	// safe until three arguments overflow
-	int64_t* psp    = psb;
+	int64_t* pstack  = malloc(sizeof(int64_t) * 1024);
+	int64_t* psb     = pstack + 3;		// safe until three arguments exaust
+	int64_t* pst     = pstack + 1024 - 3;	// safe until three arguments overflow
+	int64_t* psp     = psb;
 
-	// jamp table
+	// return stack
+	uint8_t** rstack = malloc(sizeof(uint8_t*) * 1024);
+	uint8_t** rsb    = rstack;
+	uint8_t** rst    = rstack + 1024;
+	uint8_t** rsp    = rstack;
+
+	// working register
+	int64_t  r0;
+
+	// jump table
 	static const void *jtbl[] = {
 		&&LB_HALT,
+		&&LB_CALL,
+		&&LB_RET,
 		&&LB_BB,
 		&&LB_BBZ,
 		&&LB_PUSHB,
@@ -42,9 +59,14 @@ int exec_rfvm(uint8_t* code)
 		&&LB_DIV,
 		&&LB_EQ,
 		&&LB_GNE,
+		&&LB_GE,
+		&&LB_LNE,
+		&&LB_LE,
 		&&LB_AND,
 		&&LB_OR,
 		&&LB_DUP,
+		&&LB_DROP,
+		&&LB_SWAP,
 		&&LB_NOT,
 		&&LB_DOT,
 	};
@@ -57,18 +79,36 @@ int exec_rfvm(uint8_t* code)
 
 	//////////////////////////////////////////////////
 	// opcodes
+LB_CALL:
+#ifndef NBCHECK
+	if(rsp >= rst) { ret = E_STACKOFLOW; goto LB_HALT; }
+#endif	// NBCHECK
+	*rsp++ = ip + 1 + sizeof(ip);
+	ip = *(uint8_t**)(ip + 1);
+	goto *jtbl[*ip];
+
+LB_RET:
+#ifndef NBCHECK
+	if(rsp <= rsb) { ret = E_FEWSTACK; goto LB_HALT; }
+#endif	// NBCHECK
+	ip = *--rsp;
+	goto *jtbl[*ip];
+
 LB_BB:
-	goto *jtbl[*(ip + (int8_t)*(ip + 1))];
+	ip = ip + *(int8_t*)(ip + 1);
+	goto *jtbl[*ip];
 
 LB_BBZ:
-	ip++;
-	if(*psp-- == 0)
+	PSP_UF_CHK_M1;
+	if(*--psp == 0)
 	{
-		goto *jtbl[*(ip + (int8_t)*ip)];
+		ip = ip + *(int8_t*)(ip + 1);
+		goto *jtbl[*ip];
 	}
 	else
 	{
-		NEXT_OP;
+		ip += 2;
+		goto *jtbl[*ip];
 	}
 
 LB_PUSHB:
@@ -81,12 +121,29 @@ LB_MUL:	DEF_BOP(*)
 LB_DIV:	DEF_BOP(/)
 LB_EQ:	DEF_BOP(==)
 LB_GNE:	DEF_BOP(>)
+LB_GE:	DEF_BOP(>=)
+LB_LNE:	DEF_BOP(<)
+LB_LE:	DEF_BOP(<=)
 LB_AND:	DEF_BOP(&&)
 LB_OR:	DEF_BOP(||)
 
 LB_DUP:
 	*psp = *(psp - 1);
 	PSP_UF_CHK_M1; psp++; PSP_OF_CHK; NEXT_OP;
+
+LB_DROP:
+	psp--;
+	PSP_UF_CHK; NEXT_OP;
+
+LB_SWAP:
+#ifndef NBCHECK
+	if(psp - psb < 2) { ret = E_FEWSTACK;   goto LB_HALT; }
+#endif	// NBCHECK
+	r0 = *(psp - 1);
+	*(psp - 1) = *(psp - 2);
+	*(psp - 2) = r0;
+	r0 = 0;
+	NEXT_OP;
 
 LB_NOT:
 	*psp = !*psp;
