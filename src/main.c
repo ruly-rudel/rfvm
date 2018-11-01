@@ -11,8 +11,8 @@ void print_err(int ret)
 	{
 		case E_OK:		fprintf(stdout, "Ok.\n");				break;
 		case E_NOTIMPL:		fprintf(stderr, "opcode not implemented yet.\n");	break;
-		case E_FEWSTACK:	fprintf(stderr, "too few stack entry.\n");		break;
-		case E_STACKOFLOW:	fprintf(stderr, "parameter stack overflow.\n");		break;
+		case E_STACKUFLOW:	fprintf(stderr, "too few parameter or return stack entry.\n");		break;
+		case E_STACKOFLOW:	fprintf(stderr, "parameter or return stack overflow.\n");		break;
 		default:		fprintf(stderr, "unknown error code.\n");		break;
 	}
 }

@@ -5,20 +5,24 @@
 #include "rfvm.h"
 
 #ifdef NBCHECK
-#define PSP_UF_CHK_M1
-#define PSP_UF_CHK
-#define PSP_OF_CHK
-#else	// NBCHECK
-#define PSP_UF_CHK_M1	if(psp <= psb) { ret = E_FEWSTACK;   goto LB_HALT; }
-#define PSP_UF_CHK	if(psp <  psb) { ret = E_FEWSTACK;   goto LB_HALT; }
-#define PSP_OF_CHK	if(psp >  pst) { ret = E_STACKOFLOW; goto LB_HALT; }
-#endif	// NBCHECK
+#define PSP_UF_CHK(X)
+#define PSP_OF_CHK(X)
+#define RSP_UF_CHK
+#define RSP_OF_CHK
+#else // NBCHECK
+#define PSP_UF_CHK(X)	if(psp - psb < (X)) { ret = E_STACKUFLOW; goto LB_HALT; }
+#define PSP_OF_CHK(X)	if(pst - psp < (X)) { ret = E_STACKOFLOW; goto LB_HALT; }
+#define RSP_UF_CHK	if(rsp - rsb < 1)   { ret = E_STACKUFLOW; goto LB_HALT; }
+#define RSP_OF_CHK	if(rst - rsp < 1)   { ret = E_STACKOFLOW; goto LB_HALT; }
+#endif // NBCHECK
 
+#define JUMP_OP		goto *jtbl[*ip]
 #define NEXT_OP		goto *jtbl[*++ip]
 
 #define DEF_BOP(OP) \
+	PSP_UF_CHK(2) \
 	psp -= 1; *(psp - 1) = *(psp - 1) OP *psp; \
-	PSP_UF_CHK_M1; NEXT_OP;
+	NEXT_OP;
 
 /////////////////////////////////////////////////////////////////////
 // public: vm
@@ -75,45 +79,34 @@ int exec_rfvm(uint8_t* code)
 	int ret = E_OK;
 
 	// initialize done. now execute vm.
-	goto *jtbl[*ip];
+	JUMP_OP;
 
 	//////////////////////////////////////////////////
 	// opcodes
 LB_CALL:
-#ifndef NBCHECK
-	if(rsp >= rst) { ret = E_STACKOFLOW; goto LB_HALT; }
-#endif	// NBCHECK
+	RSP_OF_CHK;
 	*rsp++ = ip + 1 + sizeof(ip);
 	ip = *(uint8_t**)(ip + 1);
-	goto *jtbl[*ip];
+	JUMP_OP;
 
 LB_RET:
-#ifndef NBCHECK
-	if(rsp <= rsb) { ret = E_FEWSTACK; goto LB_HALT; }
-#endif	// NBCHECK
+	RSP_UF_CHK;
 	ip = *--rsp;
-	goto *jtbl[*ip];
+	JUMP_OP;
 
 LB_BB:
 	ip = ip + *(int8_t*)(ip + 1);
-	goto *jtbl[*ip];
+	JUMP_OP;
 
 LB_BBZ:
-	PSP_UF_CHK_M1;
-	if(*--psp == 0)
-	{
-		ip = ip + *(int8_t*)(ip + 1);
-		goto *jtbl[*ip];
-	}
-	else
-	{
-		ip += 2;
-		goto *jtbl[*ip];
-	}
+	PSP_UF_CHK(1);
+	ip = ip + (*--psp ? 2 : *(int8_t*)(ip + 1));
+	JUMP_OP;
 
 LB_PUSHB:
+	PSP_OF_CHK(1);
 	*psp++ = (int8_t)*++ip;
-	PSP_OF_CHK; NEXT_OP;
+	NEXT_OP;
 
 LB_ADD: DEF_BOP(+)
 LB_SUB:	DEF_BOP(-)
@@ -128,17 +121,17 @@ LB_AND:	DEF_BOP(&&)
 LB_OR:	DEF_BOP(||)
 
 LB_DUP:
+	PSP_UF_CHK(1); PSP_OF_CHK(1);
 	*psp = *(psp - 1);
-	PSP_UF_CHK_M1; psp++; PSP_OF_CHK; NEXT_OP;
+	psp++; NEXT_OP;
 
 LB_DROP:
+	PSP_UF_CHK(1);
 	psp--;
-	PSP_UF_CHK; NEXT_OP;
+	NEXT_OP;
 
 LB_SWAP:
-#ifndef NBCHECK
-	if(psp - psb < 2) { ret = E_FEWSTACK;   goto LB_HALT; }
-#endif	// NBCHECK
+	PSP_UF_CHK(2);
 	r0 = *(psp - 1);
 	*(psp - 1) = *(psp - 2);
 	*(psp - 2) = r0;
@@ -146,12 +139,14 @@ LB_SWAP:
 	NEXT_OP;
 
 LB_NOT:
+	PSP_UF_CHK(1);
 	*psp = !*psp;
-	PSP_UF_CHK_M1; NEXT_OP;
+	NEXT_OP;
 
 LB_DOT:
+	PSP_UF_CHK(1);
 	printf("%ld ", *--psp);
-	PSP_UF_CHK; NEXT_OP;
+	NEXT_OP;
 
 LB_NOTIMPL:
 	ret = E_NOTIMPL;

@@ -41,7 +41,7 @@ typedef enum {
 
 typedef enum {
 	E_OK = 0,
-	E_FEWSTACK,
+	E_STACKUFLOW,
 	E_STACKOFLOW,
 	E_NOTIMPL,
 } err_t;
