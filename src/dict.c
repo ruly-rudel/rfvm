@@ -70,6 +70,7 @@ dict_t*	dict_emit_ ## SUFIX (T val, dict_t* dict) \
 DEF_EMITTER(uint8_t, op)
 DEF_EMITTER(uint8_t, b)
 DEF_EMITTER(void*,   ptr)
+DEF_EMITTER(int32_t, w)
 DEF_EMITTER(int64_t, qw)
 
 dict_t*	dict_end_def(dict_t* dict)

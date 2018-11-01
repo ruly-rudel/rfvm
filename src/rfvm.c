@@ -153,6 +153,8 @@ LB_NOTIMPL:
 	// fall thru
 
 LB_HALT:
+	free(pstack);
+	free(rstack);
 	return ret;
 }
 

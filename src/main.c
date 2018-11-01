@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <sys/mman.h>
 #include "rfvm.h"
 #include "dict.h"
+#include "jit.h"
 
 void print_err(int ret)
 {
@@ -106,7 +108,7 @@ int main(int argc, char* argv[])
 
 	dict_begin_def("main2", false, &dict);
 	dict_emit_op (OP_PUSHB, &dict);
-	dict_emit_b  (40,       &dict);
+	dict_emit_b  (25,       &dict);
 	dict_emit_op (OP_CALL,  &dict);
 	dict_emit_ptr(fib,      &dict);
 	dict_emit_op (OP_DOT,   &dict);
@@ -116,6 +118,34 @@ int main(int argc, char* argv[])
 	uint8_t* main2 = dict_get_body("main2", &dict);
 	assert(main2 != 0);
 	print_err(exec_rfvm(main2));
+
+
+	// jit test
+	void* jitc = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if(jitc == (void*)-1) abort();
+
+	dict_t jdict = dict_init(jitc, 4096);
+	dict_begin_def("ret42", false, &jdict);
+	dict_emit_b   (0xb8, &jdict);	// mov eax, 42
+	dict_emit_w   (42,   &jdict);
+	dict_emit_b   (0xc3, &jdict);	// ret
+	dict_end_def(&jdict);
+
+	uint8_t* ret42 = dict_get_body("ret42", &jdict);
+	assert(ret42 != 0);
+
+	if (mprotect(jitc, 4096, PROT_READ | PROT_EXEC) == -1) abort();
+
+	printf("%d\n", ((int (*)(void))ret42)());
+
+	// jit test2
+	jit_t jit = jit_init(4096);
+	jit_begin_def("push84", false, &jit);
+	jit_emit_pushb(84, &jit);
+	jit_end_def(&jit);
+
+	jit_make_executable(&jit);
+	printf("%ld\n", jit_run("push84", &jit));
 
 	return 0;
 }
