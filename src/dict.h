@@ -18,7 +18,7 @@ void*	dict_get_current_body(dict_t* dict);
 dict_t*	dict_emit_op (uint8_t val, dict_t* dict);
 dict_t*	dict_emit_b  (uint8_t val, dict_t* dict);
 dict_t*	dict_emit_ptr(void*   val, dict_t* dict);
-dict_t*	dict_emit_w  (int32_t val, dict_t* dict);
+dict_t*	dict_emit_dw (int32_t val, dict_t* dict);
 dict_t*	dict_emit_qw (int64_t val, dict_t* dict);
 dict_t*	dict_end_def(dict_t* dict);
 

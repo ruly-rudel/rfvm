@@ -11,7 +11,7 @@ void print_err(int ret)
 {
 	switch(ret)
 	{
-		case E_OK:		fprintf(stdout, "Ok.\n");				break;
+		case E_OK:		fprintf(stdout, "ok.\n");				break;
 		case E_NOTIMPL:		fprintf(stderr, "opcode not implemented yet.\n");	break;
 		case E_STACKUFLOW:	fprintf(stderr, "too few parameter or return stack entry.\n");		break;
 		case E_STACKOFLOW:	fprintf(stderr, "parameter or return stack overflow.\n");		break;
@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 
 	dict_begin_def("main2", false, &dict);
 	dict_emit_op (OP_PUSHB, &dict);
-	dict_emit_b  (25,       &dict);
+	dict_emit_b  (40,       &dict);
 	dict_emit_op (OP_CALL,  &dict);
 	dict_emit_ptr(fib,      &dict);
 	dict_emit_op (OP_DOT,   &dict);
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 	dict_t jdict = dict_init(jitc, 4096);
 	dict_begin_def("ret42", false, &jdict);
 	dict_emit_b   (0xb8, &jdict);	// mov eax, 42
-	dict_emit_w   (42,   &jdict);
+	dict_emit_dw  (42,   &jdict);
 	dict_emit_b   (0xc3, &jdict);	// ret
 	dict_end_def(&jdict);
 
@@ -138,14 +138,84 @@ int main(int argc, char* argv[])
 
 	printf("%d\n", ((int (*)(void))ret42)());
 
-	// jit test2
+	// jit test2(pushb)
 	jit_t jit = jit_init(4096);
 	jit_begin_def("push84", false, &jit);
 	jit_emit_pushb(84, &jit);
+	jit_emit_ret(&jit);
 	jit_end_def(&jit);
 
 	jit_make_executable(&jit);
-	printf("%ld\n", jit_run("push84", &jit));
+	printf("%ld\n", jit_run("push84", &jit, 0));
+
+	// jit test 3(dup, add)
+	jit_make_writable(&jit);
+	jit_begin_def("mul2", false, &jit);
+	jit_emit_dup(&jit);
+	jit_emit_add(&jit);
+	jit_emit_ret(&jit);
+	jit_end_def(&jit);
+
+	jit_make_executable(&jit);
+	printf("%ld\n", jit_run("mul2", &jit, 1, 12));
+
+	// jit test 4(sub)
+	jit_make_writable(&jit);
+	jit_begin_def("sub4", false, &jit);
+	jit_emit_pushb(4, &jit);
+	jit_emit_sub(&jit);
+	jit_emit_ret(&jit);
+	jit_end_def(&jit);
+
+	jit_make_executable(&jit);
+	printf("%ld\n", jit_run("sub4", &jit, 1, 12));
+
+	// jit test 4(js)
+	jit_make_writable(&jit);
+	jit_begin_def("ceil4", false, &jit);
+	jit_emit_dup(&jit);
+	jit_emit_pushb(4, &jit);
+	jit_emit_sub(&jit);
+	jit_emit_bpl(2, &jit);
+	jit_emit_ret(&jit);
+	jit_emit_drop(&jit);
+	jit_emit_pushb(0, &jit);
+	jit_emit_ret(&jit);
+	jit_end_def(&jit);
+
+	jit_make_executable(&jit);
+	printf("%ld\n", jit_run("ceil4", &jit, 1, 2));
+	printf("%ld\n", jit_run("ceil4", &jit, 1, 3));
+	printf("%ld\n", jit_run("ceil4", &jit, 1, 4));
+	printf("%ld\n", jit_run("ceil4", &jit, 1, 5));
+
+	// jit test 4(js)
+	jit_make_writable(&jit);
+	jit_begin_def("fib", false, &jit);
+	uint8_t* jit_self = jit_get_current_body(&jit);
+	jit_emit_dup(&jit);
+	jit_emit_pushb(2, &jit);
+	jit_emit_sub(&jit);
+	jit_emit_bpl(2, &jit);
+	jit_emit_ret(&jit);
+
+	jit_emit_dup(&jit);
+	jit_emit_pushb(1, &jit);
+	jit_emit_sub(&jit);
+	jit_emit_call(jit_self, &jit);
+
+	jit_emit_swap(&jit);
+	jit_emit_pushb(2, &jit);
+	jit_emit_sub(&jit);
+	jit_emit_call(jit_self, &jit);
+
+	jit_emit_add(&jit);
+	jit_emit_ret(&jit);
+
+	jit_end_def(&jit);
+
+	jit_make_executable(&jit);
+	printf("%ld\n", jit_run("fib", &jit, 1, 25));
 
 	return 0;
 }
