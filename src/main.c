@@ -19,7 +19,7 @@ void print_err(int ret)
 	}
 }
 
-int main(int argc, char* argv[])
+void test_rfvm(void)
 {
 	uint8_t code[] = { OP_PUSHB, 10, OP_PUSHB, -2, OP_ADD, OP_PUSHB, 3, OP_MUL, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code));
@@ -33,15 +33,20 @@ int main(int argc, char* argv[])
 	uint8_t code4[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_OR, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code4));
 
+	/*
 	uint8_t code5[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_GNE, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code5));
+	*/
 
 	uint8_t code6[] = { OP_DUP, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code6));
 
 	uint8_t code7[] = { OP_PUSHB, 20, OP_DUP, OP_DOT, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code7));
+}
 
+void test_dict(void)
+{
 	void* buf = malloc(4096);
 	dict_t dict = dict_init(buf, 4096);
 
@@ -52,7 +57,7 @@ int main(int argc, char* argv[])
 	dict_emit_op(OP_RET, &dict);
 	dict_end_def(&dict);
 
-	uint8_t* square = dict_get_body("square", &dict);
+	uint8_t* square = get_word_body(dict_get_word("square", &dict));
 	assert(square != 0);
 	assert(square[0] == OP_DUP);
 	assert(square[1] == OP_MUL);
@@ -67,7 +72,7 @@ int main(int argc, char* argv[])
 	dict_emit_op (OP_HALT,  &dict);
 	dict_end_def(&dict);
 
-	uint8_t* main1 = dict_get_body("main1", &dict);
+	uint8_t* main1 = get_word_body(dict_get_word("main1", &dict));
 	assert(main1 != 0);
 	print_err(exec_rfvm(main1));
 
@@ -77,9 +82,9 @@ int main(int argc, char* argv[])
 	uint8_t* self = dict_get_current_body(&dict);
 	dict_emit_op (OP_DUP, &dict);
 	dict_emit_op (OP_PUSHB, &dict);
-	dict_emit_b  (1,        &dict);
-	dict_emit_op (OP_LE,    &dict);
-	dict_emit_op (OP_BBZ,   &dict);
+	dict_emit_b  (2,        &dict);
+	dict_emit_op (OP_SUB,   &dict);
+	dict_emit_op (OP_BPL,   &dict);
 	dict_emit_b  (3,        &dict);
 	dict_emit_op (OP_RET,   &dict);
 
@@ -102,7 +107,7 @@ int main(int argc, char* argv[])
 
 	dict_end_def(&dict);
 
-	uint8_t* fib = dict_get_body("fib", &dict);
+	uint8_t* fib = get_word_body(dict_get_word("fib", &dict));
 	assert(fib != 0);
 	assert(fib == self);
 
@@ -115,11 +120,13 @@ int main(int argc, char* argv[])
 	dict_emit_op (OP_HALT,  &dict);
 	dict_end_def(&dict);
 
-	uint8_t* main2 = dict_get_body("main2", &dict);
+	uint8_t* main2 = get_word_body(dict_get_word("main2", &dict));
 	assert(main2 != 0);
 	print_err(exec_rfvm(main2));
+}
 
-
+void test_jit(void)
+{
 	// jit test
 	void* jitc = mmap(0, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if(jitc == (void*)-1) abort();
@@ -131,7 +138,7 @@ int main(int argc, char* argv[])
 	dict_emit_b   (0xc3, &jdict);	// ret
 	dict_end_def(&jdict);
 
-	uint8_t* ret42 = dict_get_body("ret42", &jdict);
+	uint8_t* ret42 = get_word_body(dict_get_word("ret42", &jdict));
 	assert(ret42 != 0);
 
 	if (mprotect(jitc, 4096, PROT_READ | PROT_EXEC) == -1) abort();
@@ -216,6 +223,13 @@ int main(int argc, char* argv[])
 
 	jit_make_executable(&jit);
 	printf("%ld\n", jit_run("fib", &jit, 1, 25));
+}
+
+int main(int argc, char* argv[])
+{
+	test_rfvm();
+	test_dict();
+	test_jit();
 
 	return 0;
 }

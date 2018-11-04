@@ -7,6 +7,17 @@ inline static int64_t	dict_get_word_size(void* word)
 	return *(int64_t*)(word - 8);
 }
 
+inline static void*	dict_get_word_native(void* word)
+{
+	return *(void**)(word - 16);
+}
+
+inline static void*	dict_set_word_native(void* native, void* word)
+{
+	*(void**)(word - 16) = native;
+	return word;
+}
+
 inline static char*	dict_get_word_name(void* word)
 {
 	return word - dict_get_word_size(word);
@@ -75,6 +86,9 @@ DEF_EMITTER(int64_t, qw)
 
 dict_t*	dict_end_def(dict_t* dict)
 {
+	// set pointer to native code (is NULL)
+	dict_emit_qw(0, dict);
+
 	// set size
 	dict_emit_qw(dict->ep - dict->mrd + 8, dict);
 	dict->mrd = dict->ep;
@@ -82,6 +96,40 @@ dict_t*	dict_end_def(dict_t* dict)
 	return dict;
 }
 
+void*	dict_get_word(const char* name, dict_t* dict)
+{
+	void* word = dict->mrd;
+	while(dict_get_word_size(word) != 0)
+	{
+		if(!strncmp(dict_get_word_name(word), name, 32))
+		{
+			return word;
+		}
+		else
+		{
+			word = dict_get_next_word(word);
+		}
+	}
+
+	return 0;	// word not found
+}
+
+void*	get_word_body(void* word)
+{
+	return word ? dict_get_word_body(word) : 0;
+}
+
+void*	get_word_native(void* word)
+{
+	return word ? dict_get_word_native(word) : 0;
+}
+
+void*	set_word_native(void* native, void* word)
+{
+	return word ? dict_set_word_native(native, word) : 0;
+}
+
+	/*
 void*	dict_get_body(const char* name, dict_t* dict)
 {
 	void* word = dict->mrd;
@@ -99,4 +147,5 @@ void*	dict_get_body(const char* name, dict_t* dict)
 
 	return 0;	// word not found
 }
+	*/
 

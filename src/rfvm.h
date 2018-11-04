@@ -10,7 +10,12 @@ typedef enum {
 	OP_RET,
 
 	OP_BB,
+	OP_BPL,
+	OP_BMI,
+	/*
+	OP_BB,
 	OP_BBZ,
+	*/
 
 	OP_PUSHB,
 	OP_PUSHD,
@@ -21,11 +26,13 @@ typedef enum {
 	OP_MUL,
 	OP_DIV,
 
+	/*
 	OP_EQ,
 	OP_GNE,
 	OP_GE,
 	OP_LNE,
 	OP_LE,
+	*/
 
 	OP_AND,
 	OP_OR,

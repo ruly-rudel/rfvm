@@ -22,6 +22,9 @@ dict_t*	dict_emit_dw (int32_t val, dict_t* dict);
 dict_t*	dict_emit_qw (int64_t val, dict_t* dict);
 dict_t*	dict_end_def(dict_t* dict);
 
-void*	dict_get_body(const char* name, dict_t* dict);
+void*	get_word_body(void* word);
+void*	get_word_native(void* word);
+void*	set_word_native(void* native, void* word);
+void*	dict_get_word(const char* name, dict_t* dict);
 
 #endif // _dict_h_

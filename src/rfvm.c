@@ -53,7 +53,9 @@ int exec_rfvm(uint8_t* code)
 		&&LB_CALL,
 		&&LB_RET,
 		&&LB_BB,
-		&&LB_BBZ,
+		&&LB_BPL,
+		&&LB_BMI,
+//		&&LB_BBZ,
 		&&LB_PUSHB,
 		&&LB_NOTIMPL,		// OP_PUSHD
 		&&LB_NOTIMPL,		// OP_PUSHQ
@@ -61,11 +63,13 @@ int exec_rfvm(uint8_t* code)
 		&&LB_SUB,
 		&&LB_MUL,
 		&&LB_DIV,
+		/*
 		&&LB_EQ,
 		&&LB_GNE,
 		&&LB_GE,
 		&&LB_LNE,
 		&&LB_LE,
+		*/
 		&&LB_AND,
 		&&LB_OR,
 		&&LB_DUP,
@@ -98,10 +102,21 @@ LB_BB:
 	ip = ip + *(int8_t*)(ip + 1);
 	JUMP_OP;
 
+LB_BPL:
+	PSP_UF_CHK(1);
+	ip = ip + (*--psp >= 0 ? *(int8_t*)(ip + 1) : 2);
+	JUMP_OP;
+
+LB_BMI:
+	PSP_UF_CHK(1);
+	ip = ip + (*--psp <  0 ? *(int8_t*)(ip + 1) : 2);
+	JUMP_OP;
+	/*
 LB_BBZ:
 	PSP_UF_CHK(1);
 	ip = ip + (*--psp ? 2 : *(int8_t*)(ip + 1));
 	JUMP_OP;
+	*/
 
 LB_PUSHB:
 	PSP_OF_CHK(1);
@@ -112,11 +127,13 @@ LB_ADD: DEF_BOP(+)
 LB_SUB:	DEF_BOP(-)
 LB_MUL:	DEF_BOP(*)
 LB_DIV:	DEF_BOP(/)
+/*
 LB_EQ:	DEF_BOP(==)
 LB_GNE:	DEF_BOP(>)
 LB_GE:	DEF_BOP(>=)
 LB_LNE:	DEF_BOP(<)
 LB_LE:	DEF_BOP(<=)
+*/
 LB_AND:	DEF_BOP(&&)
 LB_OR:	DEF_BOP(||)
 

@@ -235,7 +235,7 @@ jit_t*	jit_end_def(jit_t* jit)
 
 void*	jit_get_body(const char* name, jit_t* jit)
 {
-	return dict_get_body(name, &jit->dict);
+	return get_word_body(dict_get_word(name, &jit->dict));
 }
 
 jit_t*	jit_make_executable(jit_t* jit)
