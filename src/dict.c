@@ -1,52 +1,53 @@
 #include <string.h>
+#include "allocator.h"
 #include "rfvm.h"
 #include "dict.h"
 
-inline static int64_t	dict_get_word_size(void* word)
+inline static int64_t	dict_get_word_size(rfval_t* word)
 {
-	return *(int64_t*)(word - 8);
+	return IMM(*(word - 1));
 }
 
-inline static void*	dict_get_word_native(void* word)
-{
-	return *(void**)(word - 16);
-}
-
-inline static void*	dict_set_word_native(void* native, void* word)
-{
-	*(void**)(word - 16) = native;
-	return word;
-}
-
-inline static char*	dict_get_word_name(void* word)
+inline static rfval_t*	dict_get_next_word(rfval_t* word)
 {
 	return word - dict_get_word_size(word);
 }
 
-inline static void*	dict_get_word_body(void* word)
+inline static void*	dict_get_word_native(rfval_t* word)
 {
-	return word - dict_get_word_size(word) + 32 + 8;
+	return (word - 2)->ptr;
 }
 
-inline static void*	dict_get_next_word(void* word)
+inline static rfval_t*	dict_set_word_native(void* native, rfval_t* word)
 {
-	return dict_get_word_name(word);
+	*(word - 2) = RFPTR(native);
+	return word;
 }
+
+inline static char*	dict_get_word_name(rfval_t* word)
+{
+	return (char*)dict_get_next_word(word);
+}
+
+inline static rfval_t*	dict_get_word_body(rfval_t* word)
+{
+	return word - dict_get_word_size(word) + 32 + 1;
+}
+
 
 /////////////////////////////////////////////////////////////////////
 // public: dictornary management functions
 
-dict_t	dict_init(void* buf, int size)
+dict_t	dict_init(int size)
 {
 	dict_t	dict = { 0 };
 
-	dict.buf	= buf;
-	dict.buf_size	= size;
+	dict.buf	= RFPTR(alloc_vector(size));
 
 	// sentinel(first word, body size is 0)
-	dict.ep		= buf + 48;
+	dict.ep		= dict.buf.vector->data + 33;
 	dict.mrd	= dict.ep;
-	memset(buf, 0, 48);
+	memset(dict.buf.vector->data, 0, 33 * sizeof(rfval_t));
 
 	return dict;
 }
@@ -56,7 +57,7 @@ dict_t	dict_init(void* buf, int size)
 dict_t*	dict_begin_def(const char* name, bool immediate, dict_t* dict)
 {
 	// set name
-	strncpy(dict->ep, name, 32);
+	strncpy((char*)dict->ep, name, 32);
 	dict->ep += 32;
 
 	// set immediate
@@ -67,9 +68,10 @@ dict_t*	dict_begin_def(const char* name, bool immediate, dict_t* dict)
 
 void*	dict_get_current_body(dict_t* dict)
 {
-	return dict->mrd + 32 + 8;
+	return dict->mrd + 32 + 1;
 }
 
+/*
 #define DEF_EMITTER(T, SUFIX) \
 dict_t*	dict_emit_ ## SUFIX (T val, dict_t* dict) \
 { \
@@ -77,20 +79,35 @@ dict_t*	dict_emit_ ## SUFIX (T val, dict_t* dict) \
 	dict->ep += sizeof(T); \
 	return dict; \
 }
+*/
 
-DEF_EMITTER(uint8_t, op)
-DEF_EMITTER(uint8_t, b)
-DEF_EMITTER(void*,   ptr)
-DEF_EMITTER(int32_t, dw)
-DEF_EMITTER(int64_t, qw)
+#define DEF_EMITTER_IMM(T, SUFIX) \
+dict_t*	dict_emit_ ## SUFIX (T val, dict_t* dict) \
+{ \
+	*dict->ep++ = RFINT(val); \
+	return dict; \
+}
+
+#define DEF_EMITTER_PTR(T, SUFIX) \
+dict_t*	dict_emit_ ## SUFIX (T val, dict_t* dict) \
+{ \
+	*dict->ep++ = RFPTR(val); \
+	return dict; \
+}
+
+DEF_EMITTER_IMM(uint8_t, op)
+DEF_EMITTER_IMM(uint8_t, b)
+DEF_EMITTER_PTR(void*,   ptr)
+DEF_EMITTER_IMM(int32_t, dw)
+DEF_EMITTER_IMM(int64_t, qw)
 
 dict_t*	dict_end_def(dict_t* dict)
 {
 	// set pointer to native code (is NULL)
-	dict_emit_qw(0, dict);
+	dict_emit_ptr(0, dict);
 
 	// set size
-	dict_emit_qw(dict->ep - dict->mrd + 8, dict);
+	dict_emit_qw(dict->ep - dict->mrd + 1, dict);
 	dict->mrd = dict->ep;
 
 	return dict;

@@ -55,7 +55,7 @@ typedef enum {
 } err_t;
 
 
-int exec_rfvm(uint8_t* code, rfval_t pstack);
+int exec_rfvm(rfval_t* code, rfval_t pstack);
 
 
 #endif // _rfvm_h_

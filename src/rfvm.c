@@ -18,8 +18,8 @@
 #define RSP_OF_CHK	if(rst - rsp < 1)   { ret = E_STACKOFLOW; goto LB_HALT; }
 #endif // NBCHECK
 
-#define JUMP_OP		goto *jtbl[*ip]
-#define NEXT_OP		goto *jtbl[*++ip]
+#define JUMP_OP		goto *jtbl[IMM(*ip)]
+#define NEXT_OP		goto *jtbl[IMM(*++ip)]
 
 #define DEF_BOP(OP) \
 	PSP_UF_CHK(2) \
@@ -29,10 +29,11 @@
 /////////////////////////////////////////////////////////////////////
 // public: vm
 
-int exec_rfvm(uint8_t* code, rfval_t pstack)
+int exec_rfvm(rfval_t* code, rfval_t pstack)
 {
 	// instruction pointer
-	uint8_t* ip     = code;
+	//rfval_t* ip     = code.vector->data;
+	rfval_t* ip     = code;
 
 	// parameter stack
 	rfval_t* psb     = pstack.vector->data + 3;		// safe until three arguments exaust
@@ -40,10 +41,16 @@ int exec_rfvm(uint8_t* code, rfval_t pstack)
 	rfval_t* psp     = psb + IMM(pstack.vector->data[0]);
 
 	// return stack
+	rfval_t rstack   = RFPTR(alloc_vector(1024));
+	rfval_t*  rsb    = rstack.vector->data;
+	rfval_t*  rst    = rstack.vector->data + IMM(rstack.vector->size);
+	rfval_t*  rsp    = rsb;
+	/*
 	uint8_t** rstack = malloc(sizeof(uint8_t*) * 1024);
 	uint8_t** rsb    = rstack;
 	uint8_t** rst    = rstack + 1024;
 	uint8_t** rsp    = rstack;
+	*/
 
 	// working register
 	rfval_t  r0;
@@ -90,27 +97,27 @@ int exec_rfvm(uint8_t* code, rfval_t pstack)
 	// opcodes
 LB_CALL:
 	RSP_OF_CHK;
-	*rsp++ = ip + 1 + sizeof(ip);
-	ip = *(uint8_t**)(ip + 1);
+	*rsp++ = RFPTR(ip + 2);
+	ip = (ip + 1)->ptr;
 	JUMP_OP;
 
 LB_RET:
 	RSP_UF_CHK;
-	ip = *--rsp;
+	ip = (--rsp)->ptr;
 	JUMP_OP;
 
 LB_BB:
-	ip = ip + *(int8_t*)(ip + 1);
+	ip = ip + IMM(*(ip + 1));
 	JUMP_OP;
 
 LB_BPL:
 	PSP_UF_CHK(1);
-	ip = ip + (IMM(*--psp) >= 0 ? *(int8_t*)(ip + 1) : 2);
+	ip = ip + (IMM(*--psp) >= 0 ? IMM(*(ip + 1)) : 2);
 	JUMP_OP;
 
 LB_BMI:
 	PSP_UF_CHK(1);
-	ip = ip + (IMM(*--psp) <  0 ? *(int8_t*)(ip + 1) : 2);
+	ip = ip + (IMM(*--psp) <  0 ? IMM(*(ip + 1)) : 2);
 	JUMP_OP;
 	/*
 LB_BBZ:
@@ -121,7 +128,7 @@ LB_BBZ:
 
 LB_PUSHB:
 	PSP_OF_CHK(1);
-	*psp++ = RFINT((int8_t)*++ip);
+	*psp++ = *++ip;
 	NEXT_OP;
 
 LB_ADD: DEF_BOP(+)
@@ -170,7 +177,6 @@ LB_NOTIMPL:
 	// fall thru
 
 LB_HALT:
-	free(rstack);
 	pstack.vector->data[0] = RFINT(psp - psb);
 	return ret;
 }

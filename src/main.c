@@ -20,38 +20,56 @@ void print_err(int ret)
 	}
 }
 
+void copy_code(int size, int8_t* code, rfval_t vector)
+{
+	for(int i = 0; i < size; i++)
+	{
+		vector.vector->data[i] = RFINT(code[i]);
+	}
+}
+
+#define SIZE(X) (sizeof(X) / sizeof(X[0]))
+
 void test_rfvm(void)
 {
 	rfval_t  pstack  = RFPTR(alloc_vector(1024));
 	pstack.vector->data[0] = RFINT(0);
 
-	uint8_t code[] = { OP_PUSHB, 10, OP_PUSHB, -2, OP_ADD, OP_PUSHB, 3, OP_MUL, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code, pstack));
+	rfval_t  cv  = RFPTR(alloc_vector(1024));
 
-	uint8_t code2[] = { OP_PUSHB, 10, OP_ADD, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
-	print_err(exec_rfvm(code2, pstack));
+	int8_t code[] = { OP_PUSHB, 10, OP_PUSHB, -2, OP_ADD, OP_PUSHB, 3, OP_MUL, OP_DOT, OP_HALT };
+	copy_code(SIZE(code), code, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
 
-	uint8_t code3[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_AND, OP_DOT, OP_HALT };
+	int8_t code2[] = { OP_PUSHB, 10, OP_ADD, OP_DOT, OP_HALT };
 	pstack.vector->data[0] = RFINT(0);
-	print_err(exec_rfvm(code3, pstack));
+	copy_code(SIZE(code2), code2, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
 
-	uint8_t code4[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_OR, OP_DOT, OP_HALT };
+	int8_t code3[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_AND, OP_DOT, OP_HALT };
 	pstack.vector->data[0] = RFINT(0);
-	print_err(exec_rfvm(code4, pstack));
+	copy_code(SIZE(code3), code3, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
+
+	int8_t code4[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_OR, OP_DOT, OP_HALT };
+	pstack.vector->data[0] = RFINT(0);
+	copy_code(SIZE(code4), code4, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
 
 	/*
 	uint8_t code5[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_GNE, OP_DOT, OP_HALT };
 	print_err(exec_rfvm(code5));
 	*/
 
-	uint8_t code6[] = { OP_DUP, OP_DOT, OP_HALT };
+	int8_t code6[] = { OP_DUP, OP_DOT, OP_HALT };
 	pstack.vector->data[0] = RFINT(0);
-	print_err(exec_rfvm(code6, pstack));
+	copy_code(SIZE(code6), code6, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
 
-	uint8_t code7[] = { OP_PUSHB, 20, OP_DUP, OP_DOT, OP_DOT, OP_HALT };
+	int8_t code7[] = { OP_PUSHB, 20, OP_DUP, OP_DOT, OP_DOT, OP_HALT };
 	pstack.vector->data[0] = RFINT(0);
-	print_err(exec_rfvm(code7, pstack));
+	copy_code(SIZE(code7), code7, cv);
+	print_err(exec_rfvm(cv.vector->data, pstack));
 }
 
 void test_dict(void)
@@ -59,8 +77,7 @@ void test_dict(void)
 	rfval_t  pstack  = RFPTR(alloc_vector(1024));
 	pstack.vector->data[0] = RFINT(0);
 
-	void* buf = malloc(4096);
-	dict_t dict = dict_init(buf, 4096);
+	dict_t dict = dict_init(4096);
 
 	// square
 	dict_begin_def("square", false, &dict);
@@ -69,11 +86,14 @@ void test_dict(void)
 	dict_emit_op(OP_RET, &dict);
 	dict_end_def(&dict);
 
-	uint8_t* square = get_word_body(dict_get_word("square", &dict));
+	rfval_t* square = get_word_body(dict_get_word("square", &dict));
 	assert(square != 0);
-	assert(square[0] == OP_DUP);
-	assert(square[1] == OP_MUL);
-	assert(square[2] == OP_RET);
+	assert(intp(square[0]));
+	assert(intp(square[1]));
+	assert(intp(square[2]));
+	assert(IMM(square[0]) == OP_DUP);
+	assert(IMM(square[1]) == OP_MUL);
+	assert(IMM(square[2]) == OP_RET);
 
 	dict_begin_def("main1", false, &dict);
 	dict_emit_op (OP_PUSHB, &dict);
@@ -84,15 +104,14 @@ void test_dict(void)
 	dict_emit_op (OP_HALT,  &dict);
 	dict_end_def(&dict);
 
-	uint8_t* main1 = get_word_body(dict_get_word("main1", &dict));
+	rfval_t* main1 = get_word_body(dict_get_word("main1", &dict));
 	assert(main1 != 0);
 	print_err(exec_rfvm(main1, pstack));
 
-
 	// fib
 	dict_begin_def("fib", false, &dict);
-	uint8_t* self = dict_get_current_body(&dict);
-	dict_emit_op (OP_DUP, &dict);
+	void* self = dict_get_current_body(&dict);
+	dict_emit_op (OP_DUP,   &dict);
 	dict_emit_op (OP_PUSHB, &dict);
 	dict_emit_b  (2,        &dict);
 	dict_emit_op (OP_SUB,   &dict);
@@ -132,11 +151,12 @@ void test_dict(void)
 	dict_emit_op (OP_HALT,  &dict);
 	dict_end_def(&dict);
 
-	uint8_t* main2 = get_word_body(dict_get_word("main2", &dict));
+	rfval_t* main2 = get_word_body(dict_get_word("main2", &dict));
 	assert(main2 != 0);
 	print_err(exec_rfvm(main2, pstack));
 }
 
+#if 0
 void test_jit(void)
 {
 	// jit test
@@ -236,6 +256,7 @@ void test_jit(void)
 	jit_make_executable(&jit);
 	printf("%ld\n", jit_run("fib", &jit, 1, 25));
 }
+#endif
 
 void test_alloc(void)
 {

@@ -5,13 +5,12 @@
 #include <stdbool.h>
 
 typedef struct {
-	void*		buf;
-	uint64_t	buf_size;
-	void*		ep;
-	void*		mrd;
+	rfval_t		buf;
+	rfval_t*	ep;
+	rfval_t*	mrd;
 } dict_t;
 
-dict_t	dict_init(void* buf, int size);
+dict_t	dict_init(int size);
 
 dict_t*	dict_begin_def(const char* name, bool immediate, dict_t* dict);
 void*	dict_get_current_body(dict_t* dict);
