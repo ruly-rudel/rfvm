@@ -265,25 +265,25 @@ void test_alloc(void)
 
 	rfval_t v2 = alloc_cons();
 	assert(consp(v2));
-	assert(v2.ptr - v1.ptr == sizeof(void*) * 3);
+	assert(v2.ptr - v1.ptr == 3);
 
 	rfval_t v3 = alloc_svec(0);
 	assert(svecp(v3));
 	assert(intp(v3.svec->size));
 	assert(IMM(v3.svec->size) == 0);
-	assert(v3.ptr - v2.ptr == sizeof(void*) * 3);
+	assert(v3.ptr - v2.ptr == 3);
 
 	rfval_t v4 = alloc_svec(5);
 	assert(svecp(v4));
 	assert(intp(v4.svec->size));
 	assert(IMM(v4.svec->size) == 5);
-	assert(v4.ptr - v3.ptr == sizeof(void*) * 2);
+	assert(v4.ptr - v3.ptr == 2);
 
 	rfval_t v5 = alloc_svec(10);
 	assert(svecp(v5));
 	assert(intp(v5.svec->size));
 	assert(IMM(v5.svec->size) == 10);
-	assert(v5.ptr - v4.ptr == sizeof(void*) * 7);
+	assert(v5.ptr - v4.ptr == 7);
 }
 
 int main(int argc, char* argv[])

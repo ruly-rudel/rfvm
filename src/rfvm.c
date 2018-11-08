@@ -1,5 +1,6 @@
 #define DEF_EXTERN
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "rfvm.h"
@@ -12,18 +13,18 @@
 #define RSP_UF_CHK
 #define RSP_OF_CHK
 #else // NBCHECK
-#define PSP_UF_CHK(X)	if(psp - psb < (X)) { ret = E_STACKUFLOW; goto LB_HALT; }
-#define PSP_OF_CHK(X)	if(pst - psp < (X)) { ret = E_STACKOFLOW; goto LB_HALT; }
-#define RSP_UF_CHK	if(rsp - rsb < 1)   { ret = E_STACKUFLOW; goto LB_HALT; }
-#define RSP_OF_CHK	if(rst - rsp < 1)   { ret = E_STACKOFLOW; goto LB_HALT; }
+#define PSP_UF_CHK(X)	if(psp       < (X) + 1) { ret = E_STACKUFLOW; goto LB_HALT; }
+#define PSP_OF_CHK(X)	if(pst - psp < (X) + 1) { ret = E_STACKOFLOW; goto LB_HALT; }
+#define RSP_UF_CHK	if(rsp       <       1) { ret = E_STACKUFLOW; goto LB_HALT; }
+#define RSP_OF_CHK	if(rsp       >    1023) { ret = E_STACKOFLOW; goto LB_HALT; }
 #endif // NBCHECK
 
-#define JUMP_OP		goto *jtbl[IMM(*ip)]
-#define NEXT_OP		goto *jtbl[IMM(*++ip)]
+#define JUMP_OP		goto *jtbl[IMM(*ip.ptr)]
+#define NEXT_OP		goto *jtbl[IMM(*++ip.ptr)]
 
 #define DEF_BOP(OP) \
 	PSP_UF_CHK(2) \
-	psp -= 1; *(psp - 1) = RFINT(IMM(*(psp - 1)) OP IMM(*psp)); \
+	psp -= 1; pstack.svec->data[psp - 1] = RFINT(IMM(pstack.svec->data[psp - 1]) OP IMM(pstack.svec->data[psp])); \
 	NEXT_OP;
 
 /////////////////////////////////////////////////////////////////////
@@ -31,19 +32,18 @@
 
 int exec_rfvm(rfval_t* code, rfval_t pstack)
 {
+	assert(svecp(pstack));
+
 	// instruction pointer
-	rfval_t* ip     = code;
+	rfval_t ip	= RFPTR(code);
 
 	// parameter stack
-	rfval_t* psb     = pstack.svec->data + 1;	// first element of pstack is pstack pointer(TOP)
-	rfval_t* pst     = pstack.svec->data + IMM(pstack.svec->size);
-	rfval_t* psp     = psb + IMM(pstack.svec->data[0]);
+	int	pst	= IMM(pstack.svec->size) - 1;
+	int	psp	= 1 + IMM(pstack.svec->data[0]);
 
 	// return stack
-	rfval_t rstack   = alloc_svec(1024);
-	rfval_t*  rsb    = rstack.svec->data;
-	rfval_t*  rst    = rstack.svec->data + IMM(rstack.svec->size);
-	rfval_t*  rsp    = rsb;
+	rfval_t	rstack	= alloc_svec(1024);
+	int	rsp	= 0;
 
 	// working register
 	rfval_t  r0;
@@ -90,27 +90,27 @@ int exec_rfvm(rfval_t* code, rfval_t pstack)
 	// opcodes
 LB_CALL:
 	RSP_OF_CHK;
-	*rsp++ = RFPTR(ip + 2);
-	ip = (ip + 1)->ptr;
+	rstack.svec->data[rsp++] = RFPTR(ip.ptr + 2);
+	ip.ptr = (ip.ptr + 1)->ptr;
 	JUMP_OP;
 
 LB_RET:
 	RSP_UF_CHK;
-	ip = (--rsp)->ptr;
+	ip.ptr = rstack.svec->data[--rsp].ptr;
 	JUMP_OP;
 
 LB_BB:
-	ip = ip + IMM(*(ip + 1));
+	ip.ptr += IMM(*(ip.ptr + 1));
 	JUMP_OP;
 
 LB_BPL:
 	PSP_UF_CHK(1);
-	ip = ip + (IMM(*--psp) >= 0 ? IMM(*(ip + 1)) : 2);
+	ip.ptr += (IMM(pstack.svec->data[--psp]) >= 0 ? IMM(*(ip.ptr + 1)) : 2);
 	JUMP_OP;
 
 LB_BMI:
 	PSP_UF_CHK(1);
-	ip = ip + (IMM(*--psp) <  0 ? IMM(*(ip + 1)) : 2);
+	ip.ptr += (IMM(pstack.svec->data[--psp]) <  0 ? IMM(*(ip.ptr + 1)) : 2);
 	JUMP_OP;
 	/*
 LB_BBZ:
@@ -121,7 +121,7 @@ LB_BBZ:
 
 LB_PUSHB:
 	PSP_OF_CHK(1);
-	*psp++ = *++ip;
+	pstack.svec->data[psp++] = *++ip.ptr;
 	NEXT_OP;
 
 LB_ADD: DEF_BOP(+)
@@ -140,7 +140,7 @@ LB_OR:	DEF_BOP(||)
 
 LB_DUP:
 	PSP_UF_CHK(1); PSP_OF_CHK(1);
-	*psp = *(psp - 1);
+	pstack.svec->data[psp] = pstack.svec->data[psp - 1];
 	psp++; NEXT_OP;
 
 LB_DROP:
@@ -150,19 +150,23 @@ LB_DROP:
 
 LB_SWAP:
 	PSP_UF_CHK(2);
-	r0 = *(psp - 1);
-	*(psp - 1) = *(psp - 2);
-	*(psp - 2) = r0;
+	r0 = pstack.svec->data[psp - 1];
+	pstack.svec->data[psp - 1] = pstack.svec->data[psp - 2];
+	pstack.svec->data[psp - 2] = r0;
 	NEXT_OP;
 
 LB_NOT:
 	PSP_UF_CHK(1);
-	*psp = RFINT(!IMM(*psp));
+	pstack.svec->data[psp - 1] = RFINT(!IMM(pstack.svec->data[psp - 1]));
 	NEXT_OP;
 
 LB_DOT:
 	PSP_UF_CHK(1);
-	printf("%ld ", IMM(*--psp));
+#if __WORDSIZE == 32
+	printf("%d ",  IMM(pstack.svec->data[--psp]));
+#else
+	printf("%ld ", IMM(pstack.svec->data[--psp]));
+#endif
 	NEXT_OP;
 
 LB_NOTIMPL:
@@ -170,7 +174,7 @@ LB_NOTIMPL:
 	// fall thru
 
 LB_HALT:
-	pstack.svec->data[0] = RFINT(psp - psb);
+	pstack.svec->data[0] = RFINT(psp - 1);
 	return ret;
 }
 
