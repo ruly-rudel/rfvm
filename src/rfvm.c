@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "rfvm.h"
+#include "allocator.h"
+#include "rftype.h"
 
 #ifdef NBCHECK
 #define PSP_UF_CHK(X)
@@ -21,7 +23,7 @@
 
 #define DEF_BOP(OP) \
 	PSP_UF_CHK(2) \
-	psp -= 1; *(psp - 1) = *(psp - 1) OP *psp; \
+	psp -= 1; *(psp - 1) = RFINT(IMM(*(psp - 1)) OP IMM(*psp)); \
 	NEXT_OP;
 
 /////////////////////////////////////////////////////////////////////
@@ -33,10 +35,10 @@ int exec_rfvm(uint8_t* code)
 	uint8_t* ip     = code;
 
 	// parameter stack
-	int64_t* pstack  = malloc(sizeof(int64_t) * 1024);
-	int64_t* psb     = pstack + 3;		// safe until three arguments exaust
-	int64_t* pst     = pstack + 1024 - 3;	// safe until three arguments overflow
-	int64_t* psp     = psb;
+	rfval_t  pstack  = RFPTR(alloc_vector(1024));
+	rfval_t* psb     = pstack.vector->data + 3;		// safe until three arguments exaust
+	rfval_t* pst     = pstack.vector->data + IMM(pstack.vector->size) - 3;	// safe until three arguments overflow
+	rfval_t* psp     = psb;
 
 	// return stack
 	uint8_t** rstack = malloc(sizeof(uint8_t*) * 1024);
@@ -45,7 +47,7 @@ int exec_rfvm(uint8_t* code)
 	uint8_t** rsp    = rstack;
 
 	// working register
-	int64_t  r0;
+	rfval_t  r0;
 
 	// jump table
 	static const void *jtbl[] = {
@@ -104,12 +106,12 @@ LB_BB:
 
 LB_BPL:
 	PSP_UF_CHK(1);
-	ip = ip + (*--psp >= 0 ? *(int8_t*)(ip + 1) : 2);
+	ip = ip + (IMM(*--psp) >= 0 ? *(int8_t*)(ip + 1) : 2);
 	JUMP_OP;
 
 LB_BMI:
 	PSP_UF_CHK(1);
-	ip = ip + (*--psp <  0 ? *(int8_t*)(ip + 1) : 2);
+	ip = ip + (IMM(*--psp) <  0 ? *(int8_t*)(ip + 1) : 2);
 	JUMP_OP;
 	/*
 LB_BBZ:
@@ -120,7 +122,7 @@ LB_BBZ:
 
 LB_PUSHB:
 	PSP_OF_CHK(1);
-	*psp++ = (int8_t)*++ip;
+	*psp++ = RFINT((int8_t)*++ip);
 	NEXT_OP;
 
 LB_ADD: DEF_BOP(+)
@@ -152,17 +154,16 @@ LB_SWAP:
 	r0 = *(psp - 1);
 	*(psp - 1) = *(psp - 2);
 	*(psp - 2) = r0;
-	r0 = 0;
 	NEXT_OP;
 
 LB_NOT:
 	PSP_UF_CHK(1);
-	*psp = !*psp;
+	*psp = RFINT(!IMM(*psp));
 	NEXT_OP;
 
 LB_DOT:
 	PSP_UF_CHK(1);
-	printf("%ld ", *--psp);
+	printf("%ld ", IMM(*--psp));
 	NEXT_OP;
 
 LB_NOTIMPL:
@@ -170,7 +171,6 @@ LB_NOTIMPL:
 	// fall thru
 
 LB_HALT:
-	free(pstack);
 	free(rstack);
 	return ret;
 }

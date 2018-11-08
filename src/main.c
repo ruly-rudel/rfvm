@@ -6,6 +6,7 @@
 #include "rfvm.h"
 #include "dict.h"
 #include "jit.h"
+#include "allocator.h"
 
 void print_err(int ret)
 {
@@ -225,11 +226,44 @@ void test_jit(void)
 	printf("%ld\n", jit_run("fib", &jit, 1, 25));
 }
 
+void test_alloc(void)
+{
+	rfval_t v1 = RFPTR(alloc_cons());
+	assert(consp(v1));
+
+	rfval_t v2 = RFPTR(alloc_cons());
+	assert(consp(v2));
+	assert(v2.ptr - v1.ptr == sizeof(void*) * 3);
+
+	rfval_t v3 = RFPTR(alloc_vector(0));
+	assert(vectorp(v3));
+	assert(intp(v3.vector->size));
+	assert(IMM(v3.vector->size) == 0);
+	assert(v3.ptr - v2.ptr == sizeof(void*) * 3);
+
+	rfval_t v4 = RFPTR(alloc_vector(5));
+	assert(vectorp(v4));
+	assert(intp(v4.vector->size));
+	assert(IMM(v4.vector->size) == 5);
+	assert(v4.ptr - v3.ptr == sizeof(void*) * 2);
+
+	rfval_t v5 = RFPTR(alloc_vector(10));
+	assert(vectorp(v5));
+	assert(intp(v5.vector->size));
+	assert(IMM(v5.vector->size) == 10);
+	assert(v5.ptr - v4.ptr == sizeof(void*) * 7);
+}
+
 int main(int argc, char* argv[])
 {
+	init_allocator();
+	test_alloc();
 	test_rfvm();
 	test_dict();
+	/*
+	test_dict();
 	test_jit();
+	*/
 
 	return 0;
 }
