@@ -29,16 +29,15 @@
 /////////////////////////////////////////////////////////////////////
 // public: vm
 
-int exec_rfvm(uint8_t* code)
+int exec_rfvm(uint8_t* code, rfval_t pstack)
 {
 	// instruction pointer
 	uint8_t* ip     = code;
 
 	// parameter stack
-	rfval_t  pstack  = RFPTR(alloc_vector(1024));
 	rfval_t* psb     = pstack.vector->data + 3;		// safe until three arguments exaust
 	rfval_t* pst     = pstack.vector->data + IMM(pstack.vector->size) - 3;	// safe until three arguments overflow
-	rfval_t* psp     = psb;
+	rfval_t* psp     = psb + IMM(pstack.vector->data[0]);
 
 	// return stack
 	uint8_t** rstack = malloc(sizeof(uint8_t*) * 1024);
@@ -172,6 +171,7 @@ LB_NOTIMPL:
 
 LB_HALT:
 	free(rstack);
+	pstack.vector->data[0] = RFINT(psp - psb);
 	return ret;
 }
 

@@ -22,17 +22,23 @@ void print_err(int ret)
 
 void test_rfvm(void)
 {
+	rfval_t  pstack  = RFPTR(alloc_vector(1024));
+	pstack.vector->data[0] = RFINT(0);
+
 	uint8_t code[] = { OP_PUSHB, 10, OP_PUSHB, -2, OP_ADD, OP_PUSHB, 3, OP_MUL, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code));
+	print_err(exec_rfvm(code, pstack));
 
 	uint8_t code2[] = { OP_PUSHB, 10, OP_ADD, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code2));
+	pstack.vector->data[0] = RFINT(0);
+	print_err(exec_rfvm(code2, pstack));
 
 	uint8_t code3[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_AND, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code3));
+	pstack.vector->data[0] = RFINT(0);
+	print_err(exec_rfvm(code3, pstack));
 
 	uint8_t code4[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_OR, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code4));
+	pstack.vector->data[0] = RFINT(0);
+	print_err(exec_rfvm(code4, pstack));
 
 	/*
 	uint8_t code5[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_GNE, OP_DOT, OP_HALT };
@@ -40,14 +46,19 @@ void test_rfvm(void)
 	*/
 
 	uint8_t code6[] = { OP_DUP, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code6));
+	pstack.vector->data[0] = RFINT(0);
+	print_err(exec_rfvm(code6, pstack));
 
 	uint8_t code7[] = { OP_PUSHB, 20, OP_DUP, OP_DOT, OP_DOT, OP_HALT };
-	print_err(exec_rfvm(code7));
+	pstack.vector->data[0] = RFINT(0);
+	print_err(exec_rfvm(code7, pstack));
 }
 
 void test_dict(void)
 {
+	rfval_t  pstack  = RFPTR(alloc_vector(1024));
+	pstack.vector->data[0] = RFINT(0);
+
 	void* buf = malloc(4096);
 	dict_t dict = dict_init(buf, 4096);
 
@@ -75,7 +86,7 @@ void test_dict(void)
 
 	uint8_t* main1 = get_word_body(dict_get_word("main1", &dict));
 	assert(main1 != 0);
-	print_err(exec_rfvm(main1));
+	print_err(exec_rfvm(main1, pstack));
 
 
 	// fib
@@ -123,7 +134,7 @@ void test_dict(void)
 
 	uint8_t* main2 = get_word_body(dict_get_word("main2", &dict));
 	assert(main2 != 0);
-	print_err(exec_rfvm(main2));
+	print_err(exec_rfvm(main2, pstack));
 }
 
 void test_jit(void)
@@ -261,7 +272,6 @@ int main(int argc, char* argv[])
 	test_rfvm();
 	test_dict();
 	/*
-	test_dict();
 	test_jit();
 	*/
 

@@ -58,7 +58,7 @@ test:	$(TARGET)
 	$(CC) $(CFLAGS) $(OPT) -c $< -o $@
 
 clean:
-	rm -rf *.o $(TARGET) librfvm.a .deps tags ../tags gmon.out *.gcno *.gcda *.gcov
+	rm -rf *.o $(TARGET) librfvm.a .deps tags ../tags gmon.out *.gcno *.gcda *.gcov tags
 
 -include .deps
 

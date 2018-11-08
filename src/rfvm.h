@@ -2,6 +2,7 @@
 #define _rfvm_h_
 
 #include <stdint.h>
+#include "rftype.h"
 
 typedef enum {
 	OP_HALT = 0,
@@ -54,7 +55,7 @@ typedef enum {
 } err_t;
 
 
-int exec_rfvm(uint8_t* code);
+int exec_rfvm(uint8_t* code, rfval_t pstack);
 
 
 #endif // _rfvm_h_
