@@ -22,7 +22,7 @@ EXTERN rfval_t* g_memory_max;
 EXTERN rfval_t* g_memory_gc;
 
 void		init_allocator		(void);
-cons_t*		alloc_cons		(void);
-vector_t*	alloc_vector		(size_t size);
+rfval_t		alloc_cons		(void);
+rfval_t		alloc_svec		(size_t size);
 
 #endif // _ALLOCATOR_H_

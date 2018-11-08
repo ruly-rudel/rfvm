@@ -42,12 +42,12 @@ dict_t	dict_init(int size)
 {
 	dict_t	dict = { 0 };
 
-	dict.buf	= RFPTR(alloc_vector(size));
+	dict.buf	= alloc_svec(size);
 
 	// sentinel(first word, body size is 0)
-	dict.ep		= dict.buf.vector->data + 33;
+	dict.ep		= dict.buf.svec->data + 33;
 	dict.mrd	= dict.ep;
-	memset(dict.buf.vector->data, 0, 33 * sizeof(rfval_t));
+	memset(dict.buf.svec->data, 0, 33 * sizeof(rfval_t));
 
 	return dict;
 }

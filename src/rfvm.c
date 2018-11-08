@@ -32,25 +32,18 @@
 int exec_rfvm(rfval_t* code, rfval_t pstack)
 {
 	// instruction pointer
-	//rfval_t* ip     = code.vector->data;
 	rfval_t* ip     = code;
 
 	// parameter stack
-	rfval_t* psb     = pstack.vector->data + 3;		// safe until three arguments exaust
-	rfval_t* pst     = pstack.vector->data + IMM(pstack.vector->size) - 3;	// safe until three arguments overflow
-	rfval_t* psp     = psb + IMM(pstack.vector->data[0]);
+	rfval_t* psb     = pstack.svec->data + 1;	// first element of pstack is pstack pointer(TOP)
+	rfval_t* pst     = pstack.svec->data + IMM(pstack.svec->size);
+	rfval_t* psp     = psb + IMM(pstack.svec->data[0]);
 
 	// return stack
-	rfval_t rstack   = RFPTR(alloc_vector(1024));
-	rfval_t*  rsb    = rstack.vector->data;
-	rfval_t*  rst    = rstack.vector->data + IMM(rstack.vector->size);
+	rfval_t rstack   = alloc_svec(1024);
+	rfval_t*  rsb    = rstack.svec->data;
+	rfval_t*  rst    = rstack.svec->data + IMM(rstack.svec->size);
 	rfval_t*  rsp    = rsb;
-	/*
-	uint8_t** rstack = malloc(sizeof(uint8_t*) * 1024);
-	uint8_t** rsb    = rstack;
-	uint8_t** rst    = rstack + 1024;
-	uint8_t** rsp    = rstack;
-	*/
 
 	// working register
 	rfval_t  r0;
@@ -177,7 +170,7 @@ LB_NOTIMPL:
 	// fall thru
 
 LB_HALT:
-	pstack.vector->data[0] = RFINT(psp - psb);
+	pstack.svec->data[0] = RFINT(psp - psb);
 	return ret;
 }
 

@@ -24,7 +24,7 @@ void copy_code(int size, int8_t* code, rfval_t vector)
 {
 	for(int i = 0; i < size; i++)
 	{
-		vector.vector->data[i] = RFINT(code[i]);
+		vector.svec->data[i] = RFINT(code[i]);
 	}
 }
 
@@ -32,29 +32,29 @@ void copy_code(int size, int8_t* code, rfval_t vector)
 
 void test_rfvm(void)
 {
-	rfval_t  pstack  = RFPTR(alloc_vector(1024));
-	pstack.vector->data[0] = RFINT(0);
+	rfval_t  pstack  = alloc_svec(1024);
+	pstack.svec->data[0] = RFINT(0);
 
-	rfval_t  cv  = RFPTR(alloc_vector(1024));
+	rfval_t  cv  = alloc_svec(1024);
 
 	int8_t code[] = { OP_PUSHB, 10, OP_PUSHB, -2, OP_ADD, OP_PUSHB, 3, OP_MUL, OP_DOT, OP_HALT };
 	copy_code(SIZE(code), code, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 
 	int8_t code2[] = { OP_PUSHB, 10, OP_ADD, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
+	pstack.svec->data[0] = RFINT(0);
 	copy_code(SIZE(code2), code2, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 
 	int8_t code3[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_AND, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
+	pstack.svec->data[0] = RFINT(0);
 	copy_code(SIZE(code3), code3, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 
 	int8_t code4[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_OR, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
+	pstack.svec->data[0] = RFINT(0);
 	copy_code(SIZE(code4), code4, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 
 	/*
 	uint8_t code5[] = { OP_PUSHB, 10, OP_PUSHB, 0, OP_GNE, OP_DOT, OP_HALT };
@@ -62,20 +62,20 @@ void test_rfvm(void)
 	*/
 
 	int8_t code6[] = { OP_DUP, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
+	pstack.svec->data[0] = RFINT(0);
 	copy_code(SIZE(code6), code6, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 
 	int8_t code7[] = { OP_PUSHB, 20, OP_DUP, OP_DOT, OP_DOT, OP_HALT };
-	pstack.vector->data[0] = RFINT(0);
+	pstack.svec->data[0] = RFINT(0);
 	copy_code(SIZE(code7), code7, cv);
-	print_err(exec_rfvm(cv.vector->data, pstack));
+	print_err(exec_rfvm(cv.svec->data, pstack));
 }
 
 void test_dict(void)
 {
-	rfval_t  pstack  = RFPTR(alloc_vector(1024));
-	pstack.vector->data[0] = RFINT(0);
+	rfval_t  pstack  = alloc_svec(1024);
+	pstack.svec->data[0] = RFINT(0);
 
 	dict_t dict = dict_init(4096);
 
@@ -260,29 +260,29 @@ void test_jit(void)
 
 void test_alloc(void)
 {
-	rfval_t v1 = RFPTR(alloc_cons());
+	rfval_t v1 = alloc_cons();
 	assert(consp(v1));
 
-	rfval_t v2 = RFPTR(alloc_cons());
+	rfval_t v2 = alloc_cons();
 	assert(consp(v2));
 	assert(v2.ptr - v1.ptr == sizeof(void*) * 3);
 
-	rfval_t v3 = RFPTR(alloc_vector(0));
-	assert(vectorp(v3));
-	assert(intp(v3.vector->size));
-	assert(IMM(v3.vector->size) == 0);
+	rfval_t v3 = alloc_svec(0);
+	assert(svecp(v3));
+	assert(intp(v3.svec->size));
+	assert(IMM(v3.svec->size) == 0);
 	assert(v3.ptr - v2.ptr == sizeof(void*) * 3);
 
-	rfval_t v4 = RFPTR(alloc_vector(5));
-	assert(vectorp(v4));
-	assert(intp(v4.vector->size));
-	assert(IMM(v4.vector->size) == 5);
+	rfval_t v4 = alloc_svec(5);
+	assert(svecp(v4));
+	assert(intp(v4.svec->size));
+	assert(IMM(v4.svec->size) == 5);
 	assert(v4.ptr - v3.ptr == sizeof(void*) * 2);
 
-	rfval_t v5 = RFPTR(alloc_vector(10));
-	assert(vectorp(v5));
-	assert(intp(v5.vector->size));
-	assert(IMM(v5.vector->size) == 10);
+	rfval_t v5 = alloc_svec(10);
+	assert(svecp(v5));
+	assert(intp(v5.svec->size));
+	assert(IMM(v5.svec->size) == 10);
 	assert(v5.ptr - v4.ptr == sizeof(void*) * 7);
 }
 
