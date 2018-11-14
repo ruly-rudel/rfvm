@@ -12,11 +12,11 @@ void print_err(int ret)
 {
 	switch(ret)
 	{
-		case E_OK:		fprintf(stdout, "ok.\n");				break;
-		case E_NOTIMPL:		fprintf(stderr, "opcode not implemented yet.\n");	break;
-		case E_STACKUFLOW:	fprintf(stderr, "too few parameter or return stack entry.\n");		break;
-		case E_STACKOFLOW:	fprintf(stderr, "parameter or return stack overflow.\n");		break;
-		default:		fprintf(stderr, "unknown error code.\n");		break;
+		case E_OK:		fwprintf(stdout, L"ok.\n");				break;
+		case E_NOTIMPL:		fwprintf(stderr, L"opcode not implemented yet.\n");	break;
+		case E_STACKUFLOW:	fwprintf(stderr, L"too few parameter or return stack entry.\n");		break;
+		case E_STACKOFLOW:	fwprintf(stderr, L"parameter or return stack overflow.\n");		break;
+		default:		fwprintf(stderr, L"unknown error code.\n");		break;
 	}
 }
 
@@ -144,7 +144,7 @@ void test_dict(void)
 
 	dict_begin_def("main2", false, &dict);
 	dict_emit_op (OP_PUSHB, &dict);
-	dict_emit_b  (40,       &dict);
+	dict_emit_b  (25,       &dict);
 	dict_emit_op (OP_CALL,  &dict);
 	dict_emit_ptr(fib,      &dict);
 	dict_emit_op (OP_DOT,   &dict);
@@ -156,6 +156,23 @@ void test_dict(void)
 	print_err(exec_rfvm(main2, pstack));
 }
 
+void test_prim(void)
+{
+	rfval_t  pstack  = alloc_svec(1024);
+	pstack.svec->data[0] = RFINT(0);
+
+	dict_t dict = dict_init(4096);
+
+	dict_begin_def("main1", false, &dict);
+	dict_emit_op (OP_READ_LINE, &dict);
+	dict_emit_op (OP_DOT,       &dict);
+	dict_emit_op (OP_HALT,      &dict);
+	dict_end_def(&dict);
+
+	rfval_t* main1 = get_word_body(dict_get_word("main1", &dict));
+	assert(main1 != 0);
+	print_err(exec_rfvm(main1, pstack));
+}
 #if 0
 void test_jit(void)
 {
@@ -291,6 +308,7 @@ int main(int argc, char* argv[])
 	init_allocator();
 	test_alloc();
 	test_rfvm();
+	test_prim();
 	test_dict();
 	/*
 	test_jit();

@@ -3,9 +3,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "rftype.h"
 #include "rfvm.h"
 #include "allocator.h"
-#include "rftype.h"
+#include "prim.h"
 
 #ifdef NBCHECK
 #define PSP_UF_CHK(X)
@@ -78,6 +79,7 @@ int exec_rfvm(rfval_t* code, rfval_t pstack)
 		&&LB_SWAP,
 		&&LB_NOT,
 		&&LB_DOT,
+		&&LB_READ_LINE,
 	};
 
 	// return code
@@ -162,11 +164,12 @@ LB_NOT:
 
 LB_DOT:
 	PSP_UF_CHK(1);
-#if __WORDSIZE == 32
-	printf("%d ",  IMM(pstack.svec->data[--psp]));
-#else
-	printf("%ld ", IMM(pstack.svec->data[--psp]));
-#endif
+	print_val(pstack.svec->data[--psp]);
+	NEXT_OP;
+
+LB_READ_LINE:
+	PSP_OF_CHK(1);
+	pstack.svec->data[psp++] = read_line_prompt(L"user> ", stdin);
 	NEXT_OP;
 
 LB_NOTIMPL:

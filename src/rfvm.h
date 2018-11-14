@@ -45,6 +45,7 @@ typedef enum {
 	OP_NOT,
 
 	OP_DOT,
+	OP_READ_LINE,
 } prim_t;
 
 typedef enum {

@@ -18,7 +18,7 @@ TEST_OPT=$(OPTIMIZE)
 CFLAGS=$(ARCH) $(COMOPT) -Wall $(INCPATHS)
 LDFLAGS=$(ARCH) $(LIBPATHS) -L.
 
-LIBSOURCES=allocator.c dict.c rfvm.c
+LIBSOURCES=allocator.c prim.c dict.c rfvm.c
 LIBOBJS=$(LIBSOURCES:%.c=%.o)
 
 TARGET=rfvm
